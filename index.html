@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<meta name="theme-color" content="#f48ca0"/>
+<title>結婚準備タスク管理</title>
+<link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+
+<div id="app" class="app-shell container">
+
+  <!-- ============ ホーム / タスク一覧 ============ -->
+  <section id="screen-home" class="screen">
+    <header class="app-bar">
+      <div class="app-bar-left">
+        <span class="app-bar-title">今後のスケジュール</span>
+      </div>
+    </header>
+
+    <div class="progress-card">
+      <div class="progress-card-top">
+        <span class="progress-card-label">全体の進捗</span>
+        <span class="progress-card-pct" id="progressPct">0%</span>
+      </div>
+      <div class="progress-bar-track">
+        <div class="progress-bar-fill" id="progressFill"></div>
+      </div>
+      <p class="progress-card-count" id="progressCount">0 / 0 完了</p>
+    </div>
+
+    <div id="categoryList" class="category-list"></div>
+  </section>
+
+  <!-- ============ タスク詳細 ============ -->
+  <section id="screen-detail" class="screen hidden">
+    <header class="app-bar">
+      <button class="icon-btn" id="detailBackBtn" type="button" aria-label="戻る">
+        <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <span class="app-bar-title">タスク詳細</span>
+      <button class="icon-btn" id="detailDeleteBtn" type="button" aria-label="削除">
+        <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2m-8 0 1 13a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2l1-13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </header>
+
+    <div class="detail-body">
+      <div class="field">
+        <label for="detailName">タスク名</label>
+        <input id="detailName" type="text" placeholder="例：親挨拶">
+      </div>
+
+      <div class="field">
+        <label>ステータス</label>
+        <div class="pill-group" id="statusPills">
+          <button class="pill" data-status="notStarted" type="button">未着手</button>
+          <button class="pill" data-status="inProgress" type="button">進行中</button>
+          <button class="pill" data-status="done" type="button">完了</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="detailDate">希望日</label>
+        <input id="detailDate" type="date">
+      </div>
+
+      <div class="field">
+        <label>担当</label>
+        <div class="pill-group" id="assigneePills">
+          <button class="pill" data-assignee="self" type="button">自分</button>
+          <button class="pill" data-assignee="partner" type="button">パートナー</button>
+          <button class="pill" data-assignee="both" type="button">二人</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="detailMemo">メモ</label>
+        <textarea id="detailMemo" placeholder="準備しておきたいことや希望を書いておきましょう"></textarea>
+      </div>
+
+      <div class="field">
+        <label for="detailReminder">リマインダー</label>
+        <select id="detailReminder">
+          <option value="">なし</option>
+          <option value="0">当日</option>
+          <option value="1">1日前</option>
+          <option value="3">3日前</option>
+          <option value="7">1週間前</option>
+          <option value="14">2週間前</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="detail-footer">
+      <button id="detailSaveBtn" class="btn-primary btn-block" type="button">保存する</button>
+    </div>
+  </section>
+
+  <!-- ============ 完了アニメーション ============ -->
+  <div id="completeModal" class="modal hidden">
+    <div class="complete-card">
+      <div class="complete-check">
+        <svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <p class="complete-title">タスクを完了しました！</p>
+      <p class="complete-sub">おつかれさまでした✨</p>
+      <div class="complete-info" id="completeInfo"></div>
+      <button id="completeOkBtn" class="btn-primary btn-block" type="button">OK</button>
+    </div>
+  </div>
+
+  <!-- ============ カレンダー ============ -->
+  <section id="screen-calendar" class="screen hidden">
+    <header class="app-bar">
+      <span class="app-bar-title">カレンダー</span>
+    </header>
+
+    <div class="cal-mode-switcher">
+      <button class="cal-mode-btn active" data-mode="month" type="button">月間カレンダー</button>
+      <button class="cal-mode-btn" data-mode="list" type="button">予定一覧</button>
+    </div>
+
+    <!-- 月間カレンダー -->
+    <div id="calMonthView">
+      <div class="cal-nav">
+        <button id="calPrevBtn" class="icon-btn" type="button" aria-label="前の月">
+          <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <span class="cal-nav-label" id="calNavLabel"></span>
+        <button id="calNextBtn" class="icon-btn" type="button" aria-label="次の月">
+          <svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+      <div class="cal-weekdays">
+        <span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span>
+      </div>
+      <div id="calGrid" class="cal-grid"></div>
+
+      <div class="cal-day-panel" id="calDayPanel">
+        <p class="cal-day-panel-title" id="calDayPanelTitle">日付を選択してください</p>
+        <div id="calDayPanelList"></div>
+      </div>
+    </div>
+
+    <!-- 予定一覧 -->
+    <div id="calListView" class="hidden">
+      <div class="list-filter-tabs">
+        <button class="list-filter-btn active" data-filter="all" type="button">すべて</button>
+        <button class="list-filter-btn" data-filter="pending" type="button">未完了のみ</button>
+        <button class="list-filter-btn" data-filter="done" type="button">完了済み</button>
+      </div>
+      <div id="calListContent"></div>
+    </div>
+  </section>
+
+  <!-- ============ 設定 ============ -->
+  <section id="screen-settings" class="screen hidden">
+    <header class="app-bar">
+      <span class="app-bar-title">設定</span>
+    </header>
+    <div class="settings-panel">
+      <p class="settings-row-label">このプロトタイプについて</p>
+      <p class="settings-row-desc">タスクの追加・編集内容は、この端末のブラウザ内にのみ保存されます。パートナーとの共有機能や、他端末との同期はまだ実装されていません。</p>
+    </div>
+    <div class="settings-panel">
+      <p class="settings-row-label">データの初期化</p>
+      <p class="settings-row-desc">保存されているすべてのタスクを削除し、初期状態（テキストでいただいた項目）に戻します。</p>
+      <button id="resetBtn" class="btn-danger" type="button">初期状態に戻す</button>
+    </div>
+  </section>
+
+  <nav class="bottom-nav">
+    <button class="nav-btn active" data-screen="home" type="button">
+      <svg viewBox="0 0 24 24"><path d="M4 20h4l10-10-4-4L4 16v4Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+      <span>タスク一覧</span>
+    </button>
+    <button class="nav-btn" data-screen="calendar" type="button">
+      <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 9h18M8 3v4M16 3v4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      <span>カレンダー</span>
+    </button>
+    <button class="nav-btn" data-screen="settings" type="button">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M19.4 13a7.6 7.6 0 0 0 0-2l2-1.4-2-3.4-2.3.8a7.7 7.7 0 0 0-1.8-1l-.3-2.4h-4l-.3 2.4a7.7 7.7 0 0 0-1.8 1l-2.3-.8-2 3.4 2 1.4a7.6 7.6 0 0 0 0 2l-2 1.4 2 3.4 2.3-.8a7.7 7.7 0 0 0 1.8 1l.3 2.4h4l.3-2.4a7.7 7.7 0 0 0 1.8-1l2.3.8 2-3.4-2-1.4Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+      <span>設定</span>
+    </button>
+  </nav>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

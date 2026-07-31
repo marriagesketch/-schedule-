@@ -1,0 +1,282 @@
+/* ============================================================
+   トークン（婚活プロフィールアプリのデザインを踏襲）
+   ============================================================ */
+:root{
+  --pink-bg:      #fff6f7;
+  --pink-primary: #f48ca0;
+  --pink-deep:    #d96c7d;
+  --pink-border:  #f0c5cc;
+  --pink-soft:    #fff0f2;
+  --ink:          #444444;
+  --ink-soft:     #888888;
+  --white:        #ffffff;
+  --shadow-card:  0 4px 12px rgba(0,0,0,.08);
+  --shadow-float: 0 8px 22px rgba(0,0,0,.14);
+  --radius-lg: 22px;
+  --radius-md: 16px;
+  --radius-sm: 12px;
+  --radius-pill: 50px;
+
+  /* カテゴリカラー */
+  --cat-engage-bg:#fff0f2;   --cat-engage-deep:#e0607a;   --cat-engage-border:#f4c3cf;
+  --cat-nyuseki-bg:#fff6ec;  --cat-nyuseki-deep:#d98a3d;  --cat-nyuseki-border:#f2d3a8;
+  --cat-future-bg:#f2f9ec;   --cat-future-deep:#6b9b45;   --cat-future-border:#cfe6b8;
+}
+
+*{ box-sizing:border-box; }
+body{
+  margin:0; padding:0 0 90px;
+  background:var(--pink-bg);
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;
+  color:var(--ink); -webkit-tap-highlight-color:transparent;
+}
+.container{ max-width:560px; margin:0 auto; }
+.hidden{ display:none !important; }
+:focus-visible{ outline:2px solid var(--pink-deep); outline-offset:2px; }
+button{ font-family:inherit; }
+@media(prefers-reduced-motion:reduce){ *{ transition:none !important; animation:none !important; } }
+
+label{ display:block; margin-bottom:6px; font-size:13px; font-weight:600; color:#555; }
+input[type="text"],input[type="date"],textarea,select{
+  width:100%; padding:12px 14px; border:1px solid var(--pink-border);
+  border-radius:var(--radius-sm); background:var(--white);
+  font-size:15px; font-family:inherit; color:var(--ink);
+}
+textarea{ min-height:80px; resize:vertical; line-height:1.6; }
+.field{ margin-bottom:16px; padding:0 16px; }
+.field:first-child{ padding-top:2px; }
+
+/* ============================================================
+   共通：アプリバー / ボタン
+   ============================================================ */
+.app-bar{
+  position:sticky; top:0; z-index:10; display:flex; align-items:center;
+  justify-content:space-between; padding:14px 10px; background:var(--pink-bg);
+}
+.app-bar-title{ flex:1; text-align:center; font-size:17px; font-weight:800; color:#3a3a3a; }
+.app-bar-left{ flex:1; }
+.icon-btn{
+  flex:0 0 auto; width:36px; height:36px; border:none; background:transparent;
+  color:#555; display:flex; align-items:center; justify-content:center; cursor:pointer;
+}
+.icon-btn svg{ width:22px; height:22px; }
+
+.btn-primary{
+  display:block; width:100%; padding:16px; border:none; border-radius:var(--radius-pill);
+  background:var(--pink-primary); color:#fff; font-size:16px; font-weight:700; cursor:pointer;
+  box-shadow:0 4px 14px rgba(244,140,160,.4);
+}
+.btn-primary:active{ opacity:.92; }
+.btn-block{ width:100%; }
+.btn-danger{
+  display:block; width:100%; margin-top:10px; padding:14px; border:2px solid #f0b8bc;
+  border-radius:var(--radius-pill); background:#fff; color:#c0505c; font-size:14px; font-weight:700; cursor:pointer;
+}
+
+.screen{ padding:0 14px; min-height:60vh; }
+
+/* ============================================================
+   進捗カード
+   ============================================================ */
+.progress-card{
+  background:var(--white); border-radius:var(--radius-lg); box-shadow:var(--shadow-card);
+  padding:18px 20px; margin-bottom:18px;
+}
+.progress-card-top{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:10px; }
+.progress-card-label{ font-size:13px; font-weight:700; color:var(--ink-soft); }
+.progress-card-pct{ font-size:22px; font-weight:800; color:var(--pink-deep); }
+.progress-bar-track{ height:8px; border-radius:6px; background:var(--pink-soft); overflow:hidden; }
+.progress-bar-fill{ height:100%; background:var(--pink-primary); border-radius:6px; transition:width .3s; }
+.progress-card-count{ margin:8px 0 0; text-align:right; font-size:12px; color:var(--ink-soft); }
+
+/* ============================================================
+   カテゴリ・タスク一覧
+   ============================================================ */
+.category-list{ display:flex; flex-direction:column; gap:16px; }
+.category-block{
+  background:var(--white); border-radius:var(--radius-lg); box-shadow:var(--shadow-card); overflow:hidden;
+}
+.category-header{
+  display:flex; align-items:center; gap:10px; width:100%; border:none; background:transparent;
+  padding:14px 16px; cursor:pointer; text-align:left;
+}
+.category-icon{
+  flex:0 0 auto; width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  font-size:16px;
+}
+.category-title{ flex:1; font-size:14.5px; font-weight:800; color:#3a3a3a; }
+.category-count{ font-size:12.5px; font-weight:700; padding:3px 10px; border-radius:var(--radius-pill); }
+.category-chevron{ flex:0 0 auto; width:18px; height:18px; color:var(--ink-soft); transition:transform .2s; }
+.category-block.collapsed .category-chevron{ transform:rotate(-90deg); }
+.category-block.collapsed .task-rows{ display:none; }
+
+.cat-engage  .category-icon{ background:var(--cat-engage-bg);  color:var(--cat-engage-deep); }
+.cat-engage  .category-count{ background:var(--cat-engage-bg); color:var(--cat-engage-deep); }
+.cat-nyuseki .category-icon{ background:var(--cat-nyuseki-bg); color:var(--cat-nyuseki-deep); }
+.cat-nyuseki .category-count{ background:var(--cat-nyuseki-bg); color:var(--cat-nyuseki-deep); }
+.cat-future  .category-icon{ background:var(--cat-future-bg);  color:var(--cat-future-deep); }
+.cat-future  .category-count{ background:var(--cat-future-bg); color:var(--cat-future-deep); }
+
+.task-rows{ border-top:1px solid #f5f0f1; }
+.task-row{
+  display:flex; align-items:center; gap:12px; padding:12px 16px;
+  border-bottom:1px solid #f5f0f1; cursor:pointer;
+}
+.task-row:last-child{ border-bottom:none; }
+.task-row:active{ background:#fffafb; }
+.task-checkbox{
+  flex:0 0 auto; width:22px; height:22px; border-radius:7px; border:2px solid var(--pink-border);
+  background:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer;
+}
+.task-checkbox svg{ width:14px; height:14px; display:none; }
+.task-row.done .task-checkbox{ background:var(--pink-primary); border-color:var(--pink-primary); }
+.task-row.done .task-checkbox svg{ display:block; }
+.task-row.done .task-name{ color:var(--ink-soft); text-decoration:line-through; }
+.task-name{ flex:1; font-size:14.5px; font-weight:600; color:#3a3a3a; }
+.task-date-badge{ flex:0 0 auto; font-size:12px; color:var(--ink-soft); }
+.task-date-badge.set{ color:var(--pink-deep); font-weight:700; }
+.task-status-tag{
+  flex:0 0 auto; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:var(--radius-pill);
+  background:#f0eef0; color:var(--ink-soft);
+}
+.task-status-tag.inProgress{ background:#fff3d8; color:#b9820f; }
+.task-row-chevron{ flex:0 0 auto; width:16px; height:16px; color:#ccc; }
+.category-add-row{
+  display:block; width:100%; padding:12px 16px; border:none; background:transparent;
+  color:var(--pink-deep); font-size:13px; font-weight:700; text-align:left; cursor:pointer;
+  border-top:1px solid #f5f0f1;
+}
+
+/* ============================================================
+   タスク詳細
+   ============================================================ */
+.detail-body{ padding-bottom:24px; }
+.pill-group{ display:flex; gap:8px; padding:0; }
+.pill{
+  flex:1; padding:10px 4px; border:2px solid var(--pink-border); border-radius:var(--radius-pill);
+  background:#fff; color:var(--ink-soft); font-size:13px; font-weight:700; cursor:pointer;
+}
+.pill.active{ background:var(--pink-primary); border-color:var(--pink-primary); color:#fff; }
+.detail-footer{ padding:6px 16px 30px; }
+
+/* ============================================================
+   完了モーダル
+   ============================================================ */
+.modal{
+  position:fixed; inset:0; z-index:50; background:rgba(40,20,25,.45);
+  display:flex; align-items:center; justify-content:center; padding:24px;
+}
+.complete-card{
+  width:100%; max-width:340px; background:#fff; border-radius:var(--radius-lg);
+  box-shadow:var(--shadow-float); padding:32px 26px 26px; text-align:center;
+}
+.complete-check{
+  width:56px; height:56px; margin:0 auto 16px; border-radius:50%;
+  background:var(--pink-primary); display:flex; align-items:center; justify-content:center;
+}
+.complete-check svg{ width:28px; height:28px; }
+.complete-title{ margin:0 0 4px; font-size:17px; font-weight:800; color:#3a3a3a; }
+.complete-sub{ margin:0 0 18px; font-size:13px; color:var(--ink-soft); }
+.complete-info{
+  background:var(--pink-soft); border-radius:var(--radius-md); padding:12px 16px; margin-bottom:20px;
+  font-size:13px; color:#555; text-align:left; line-height:2;
+}
+.complete-info span{ font-weight:700; color:var(--pink-deep); }
+
+/* ============================================================
+   カレンダー
+   ============================================================ */
+.cal-mode-switcher{
+  display:flex; gap:6px; margin:4px 0 16px; background:var(--white);
+  border-radius:var(--radius-pill); padding:4px; box-shadow:var(--shadow-card);
+}
+.cal-mode-btn{
+  flex:1; padding:9px 2px; border:none; border-radius:var(--radius-pill);
+  background:transparent; color:var(--ink-soft); font-size:13px; font-weight:700; cursor:pointer;
+}
+.cal-mode-btn.active{ background:var(--pink-primary); color:#fff; }
+
+.cal-nav{ display:flex; align-items:center; justify-content:center; gap:18px; margin-bottom:8px; }
+.cal-nav-label{ font-size:16px; font-weight:800; color:#3a3a3a; min-width:110px; text-align:center; }
+
+.cal-weekdays{
+  display:grid; grid-template-columns:repeat(7,1fr); text-align:center;
+  font-size:11px; font-weight:700; color:var(--ink-soft); margin-bottom:6px;
+}
+.cal-grid{
+  display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin-bottom:14px;
+}
+.cal-cell{
+  aspect-ratio:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  border-radius:12px; background:#fff; box-shadow:var(--shadow-card); cursor:pointer; position:relative;
+  font-size:13px; font-weight:600; color:#3a3a3a;
+}
+.cal-cell.empty{ background:transparent; box-shadow:none; cursor:default; }
+.cal-cell.today{ border:2px solid var(--pink-primary); }
+.cal-cell.selected{ background:var(--pink-primary); color:#fff; }
+.cal-dots{ display:flex; gap:2px; margin-top:3px; }
+.cal-dot{ width:5px; height:5px; border-radius:50%; }
+
+.cal-day-panel{
+  background:var(--white); border-radius:var(--radius-lg); box-shadow:var(--shadow-card); padding:16px 18px;
+}
+.cal-day-panel-title{ margin:0 0 10px; font-size:13px; font-weight:800; color:var(--pink-deep); }
+.cal-day-task-row{
+  display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #f5f0f1; cursor:pointer;
+}
+.cal-day-task-row:last-child{ border-bottom:none; }
+.cal-day-task-dot{ width:8px; height:8px; border-radius:50%; flex:0 0 auto; }
+.cal-day-task-name{ flex:1; font-size:13.5px; font-weight:600; color:#3a3a3a; }
+.cal-day-task-empty{ font-size:13px; color:var(--ink-soft); padding:6px 0; }
+
+.list-filter-tabs{ display:flex; gap:6px; margin-bottom:14px; }
+.list-filter-btn{
+  flex:1; padding:8px 4px; border:2px solid var(--pink-border); border-radius:var(--radius-pill);
+  background:#fff; color:var(--pink-deep); font-size:12.5px; font-weight:700; cursor:pointer;
+}
+.list-filter-btn.active{ background:var(--pink-primary); border-color:var(--pink-primary); color:#fff; }
+
+.list-section-title{ margin:0 0 8px; padding-left:4px; font-size:12.5px; font-weight:800; color:var(--ink-soft); }
+.list-task-card{
+  display:flex; align-items:center; gap:12px; background:#fff; border-radius:var(--radius-md);
+  box-shadow:var(--shadow-card); padding:12px 14px; margin-bottom:10px; cursor:pointer;
+}
+.list-task-icon{
+  flex:0 0 auto; width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:15px;
+}
+.list-task-main{ flex:1; min-width:0; }
+.list-task-name{ font-size:14px; font-weight:700; color:#3a3a3a; margin-bottom:2px; }
+.list-task-name.done{ color:var(--ink-soft); text-decoration:line-through; }
+.list-task-date{ font-size:12px; color:var(--ink-soft); }
+.list-task-badge{ flex:0 0 auto; font-size:11.5px; font-weight:800; color:var(--pink-deep); }
+.list-empty{ text-align:center; color:var(--ink-soft); font-size:13px; padding:30px 10px; }
+
+/* ============================================================
+   設定
+   ============================================================ */
+.settings-panel{
+  background:var(--white); border-radius:var(--radius-lg); box-shadow:var(--shadow-card);
+  padding:18px 18px; margin:0 0 14px;
+}
+.settings-row-label{ margin:0 0 8px; font-size:14px; font-weight:800; color:#3a3a3a; }
+.settings-row-desc{ margin:0; font-size:12.5px; line-height:1.8; color:var(--ink-soft); }
+
+/* ============================================================
+   ボトムナビ
+   ============================================================ */
+.bottom-nav{
+  position:fixed; left:0; right:0; bottom:0; z-index:20; display:flex;
+  background:#fff; box-shadow:0 -2px 10px rgba(0,0,0,.06);
+  padding:6px 6px calc(6px + env(safe-area-inset-bottom));
+  max-width:560px; margin:0 auto;
+}
+.nav-btn{
+  flex:1; display:flex; flex-direction:column; align-items:center; gap:2px;
+  border:none; background:transparent; color:#b8b8b8; font-size:10.5px; font-weight:700; padding:6px 0; cursor:pointer;
+}
+.nav-btn svg{ width:22px; height:22px; }
+.nav-btn.active{ color:var(--pink-primary); }
+
+@media(min-width:561px){
+  .bottom-nav{ border-radius:0 0 var(--radius-lg) var(--radius-lg); }
+}
