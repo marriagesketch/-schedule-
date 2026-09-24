@@ -37,6 +37,7 @@ let calYear, calMonth;      // 表示中の年月（0-11）
 let calSelectedDate = null;
 let calMode = "month";
 let listFilter = "all";
+let pendingCalendarData = null;
 
 /* ============================================================
    ユーティリティ
@@ -72,6 +73,78 @@ function escapeHTML(str){
   return String(str ?? "")
     .replace(/&/g,"&amp;").replace(/</g,"&lt;")
     .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+/* ---- カレンダー連携（.ics生成 / Googleカレンダー） ---- */
+function dateStrToICSDate(dateStr){
+  return dateStr.replace(/-/g,"");
+}
+function addDaysToDateStrAsICS(dateStr, days){
+  const d = parseDateStr(dateStr);
+  d.setDate(d.getDate()+days);
+  return `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}`;
+}
+function escapeICSText(str){
+  return String(str || "")
+    .replace(/\\/g,"\\\\").replace(/;/g,"\\;")
+    .replace(/,/g,"\\,").replace(/\n/g,"\\n");
+}
+function formatICSTimestamp(date){
+  return `${date.getUTCFullYear()}${pad(date.getUTCMonth()+1)}${pad(date.getUTCDate())}T${pad(date.getUTCHours())}${pad(date.getUTCMinutes())}${pad(date.getUTCSeconds())}Z`;
+}
+function buildICSContent({ name, dateStr, memo, reminderDays }){
+  const dtStart = dateStrToICSDate(dateStr);
+  const dtEnd = addDaysToDateStrAsICS(dateStr, 1);
+  const uid = `${generateId()}@wedding-task-app`;
+  const dtStamp = formatICSTimestamp(new Date());
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//wedding-task-app//JP",
+    "CALSCALE:GREGORIAN",
+    "BEGIN:VEVENT",
+    `UID:${uid}`,
+    `DTSTAMP:${dtStamp}`,
+    `DTSTART;VALUE=DATE:${dtStart}`,
+    `DTEND;VALUE=DATE:${dtEnd}`,
+    `SUMMARY:${escapeICSText(name)}`,
+  ];
+  if(memo) lines.push(`DESCRIPTION:${escapeICSText(memo)}`);
+  if(reminderDays !== "" && reminderDays !== undefined && reminderDays !== null){
+    const n = Math.max(0, parseInt(reminderDays, 10) || 0);
+    lines.push("BEGIN:VALARM");
+    lines.push("ACTION:DISPLAY");
+    lines.push(`DESCRIPTION:${escapeICSText(name)}`);
+    lines.push(`TRIGGER:-P${n}D`);
+    lines.push("END:VALARM");
+  }
+  lines.push("END:VEVENT");
+  lines.push("END:VCALENDAR");
+  return lines.join("\r\n");
+}
+function downloadICS(data){
+  const content = buildICSContent(data);
+  const blob = new Blob([content], { type:"text/calendar;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  const safeName = (data.name || "task").replace(/[\\/:*?"<>|]/g, "_");
+  a.download = `${safeName}.ics`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url), 2000);
+}
+function buildGoogleCalendarURL({ name, dateStr, memo }){
+  const start = dateStrToICSDate(dateStr);
+  const end = addDaysToDateStrAsICS(dateStr, 1);
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: name,
+    dates: `${start}/${end}`,
+  });
+  if(memo) params.set("details", memo);
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
 
 /* ============================================================
@@ -326,6 +399,27 @@ function hideCompleteModal(){
   closeDetail();
 }
 
+/* ---- カレンダー追加アクションシート ---- */
+function openCalendarAddSheet(){
+  const name = document.getElementById("detailName").value.trim();
+  const dateStr = document.getElementById("detailDate").value;
+  const memo = document.getElementById("detailMemo").value;
+  const reminderDays = document.getElementById("detailReminder").value;
+  if(!name){
+    alert("タスク名を入力してください。");
+    return;
+  }
+  if(!dateStr){
+    alert("先に「希望日」を入力してください。");
+    return;
+  }
+  pendingCalendarData = { name, dateStr, memo, reminderDays };
+  document.getElementById("calendarAddModal").classList.remove("hidden");
+}
+function closeCalendarAddSheet(){
+  document.getElementById("calendarAddModal").classList.add("hidden");
+}
+
 /* ============================================================
    カレンダー
    ============================================================ */
@@ -509,6 +603,18 @@ function bindEvents(){
 
   // 完了モーダル
   document.getElementById("completeOkBtn").addEventListener("click", hideCompleteModal);
+
+  // カレンダー追加アクションシート
+  document.getElementById("addToCalendarBtn").addEventListener("click", openCalendarAddSheet);
+  document.getElementById("addIcsBtn").addEventListener("click", ()=>{
+    if(pendingCalendarData) downloadICS(pendingCalendarData);
+    closeCalendarAddSheet();
+  });
+  document.getElementById("addGoogleBtn").addEventListener("click", ()=>{
+    if(pendingCalendarData) window.open(buildGoogleCalendarURL(pendingCalendarData), "_blank");
+    closeCalendarAddSheet();
+  });
+  document.getElementById("calendarAddCancelBtn").addEventListener("click", closeCalendarAddSheet);
 
   // カレンダー：モード切替
   document.querySelectorAll(".cal-mode-btn").forEach(btn=>{

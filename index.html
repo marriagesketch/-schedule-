@@ -90,6 +90,14 @@
           <option value="14">2週間前</option>
         </select>
       </div>
+
+      <div class="field">
+        <button id="addToCalendarBtn" class="btn-secondary btn-block" type="button">
+          <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 9h18M8 3v4M16 3v4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          カレンダーに追加
+        </button>
+        <p class="field-hint">※「希望日」を入力すると、端末のカレンダー（iPhone標準カレンダー／Googleカレンダー）に追加できます。追加後、LINEカレンダー側で「スマホカレンダー連携」をオンにしていれば、LINEカレンダーにも表示されます。</p>
+      </div>
     </div>
 
     <div class="detail-footer">
@@ -107,6 +115,29 @@
       <p class="complete-sub">おつかれさまでした✨</p>
       <div class="complete-info" id="completeInfo"></div>
       <button id="completeOkBtn" class="btn-primary btn-block" type="button">OK</button>
+    </div>
+  </div>
+
+  <!-- ============ カレンダー追加アクションシート ============ -->
+  <div id="calendarAddModal" class="modal hidden">
+    <div class="sheet-card">
+      <p class="sheet-title">カレンダーに追加</p>
+      <p class="sheet-hint">追加方法を選んでください</p>
+      <button class="sheet-option" id="addIcsBtn" type="button">
+        <span class="sheet-option-icon">📱</span>
+        <span>
+          <span class="sheet-option-title">iPhone / 標準カレンダー</span>
+          <span class="sheet-option-desc">.icsファイルをダウンロードして追加します</span>
+        </span>
+      </button>
+      <button class="sheet-option" id="addGoogleBtn" type="button">
+        <span class="sheet-option-icon">🗓️</span>
+        <span>
+          <span class="sheet-option-title">Googleカレンダー</span>
+          <span class="sheet-option-desc">ブラウザで予定作成画面を開きます</span>
+        </span>
+      </button>
+      <button class="sheet-cancel" id="calendarAddCancelBtn" type="button">キャンセル</button>
     </div>
   </div>
 
