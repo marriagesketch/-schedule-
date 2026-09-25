@@ -9,11 +9,11 @@ const STORAGE_KEY = "wedding_schedule_tasks_v1";
 const COLLAPSE_KEY = "wedding_schedule_collapse_v1";
 
 const CATEGORIES = [
-  { id:"engage",  title:"婚約までのスケジュール",   icon:"💍", cls:"cat-engage",
+  { id:"engage",  title:"婚約までのスケジュール",   cls:"cat-engage",
     dot:"var(--cat-engage-deep)" },
-  { id:"nyuseki", title:"入籍前後のスケジュール",   icon:"🏠", cls:"cat-nyuseki",
+  { id:"nyuseki", title:"入籍前後のスケジュール",    cls:"cat-nyuseki",
     dot:"var(--cat-nyuseki-deep)" },
-  { id:"future",  title:"将来のスケジュール",       icon:"🌱", cls:"cat-future",
+  { id:"future",  title:"将来のスケジュール",       cls:"cat-future",
     dot:"var(--cat-future-deep)" },
 ];
 const CATEGORY_MAP = Object.fromEntries(CATEGORIES.map(c=>[c.id,c]));
