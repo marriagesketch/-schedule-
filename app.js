@@ -529,7 +529,6 @@ function listCardHTML(t, hasDate){
   const badge = done ? "完了" : (hasDate ? daysUntilLabel(t.date) : "");
   return `
     <div class="list-task-card" data-task-id="${t.id}">
-      <span class="list-task-icon" style="background:${cat?cat.dot+'22':'#eee'}">${cat?cat.icon:""}</span>
       <div class="list-task-main">
         <div class="list-task-name${done?" done":""}">${escapeHTML(t.name)}</div>
         <div class="list-task-date">${hasDate?formatShortDate(t.date):"日付未定"}</div>
