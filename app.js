@@ -9,11 +9,11 @@ const STORAGE_KEY = "wedding_schedule_tasks_v1";
 const COLLAPSE_KEY = "wedding_schedule_collapse_v1";
 
 const CATEGORIES = [
-  { id:"engage",  title:"婚約までのスケジュール",   cls:"cat-engage",
+  { id:"engage",  title:"婚約までのスケジュール",   icon:"💍", cls:"cat-engage",
     dot:"var(--cat-engage-deep)" },
-  { id:"nyuseki", title:"入籍前後のスケジュール",    cls:"cat-nyuseki",
+  { id:"nyuseki", title:"入籍前後のスケジュール",   icon:"🏠", cls:"cat-nyuseki",
     dot:"var(--cat-nyuseki-deep)" },
-  { id:"future",  title:"将来のスケジュール",       cls:"cat-future",
+  { id:"future",  title:"将来のスケジュール",       icon:"🌱", cls:"cat-future",
     dot:"var(--cat-future-deep)" },
 ];
 const CATEGORY_MAP = Object.fromEntries(CATEGORIES.map(c=>[c.id,c]));
@@ -146,6 +146,24 @@ function buildGoogleCalendarURL({ name, dateStr, memo }){
   if(memo) params.set("details", memo);
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
+function addDaysToISODate(dateStr, days){
+  const d = parseDateStr(dateStr);
+  d.setDate(d.getDate()+days);
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+function buildOutlookCalendarURL({ name, dateStr, memo }){
+  const endDateStr = addDaysToISODate(dateStr, 1);
+  const params = new URLSearchParams({
+    path: "/calendar/action/compose",
+    rru: "addevent",
+    startdt: `${dateStr}T00:00:00`,
+    enddt: `${endDateStr}T00:00:00`,
+    subject: name,
+    allday: "true",
+  });
+  if(memo) params.set("body", memo);
+  return `https://outlook.live.com/calendar/0/deeplink/compose?${params.toString()}`;
+}
 
 /* ============================================================
    永続化
@@ -171,17 +189,23 @@ function createDefaultTasks(){
   return list;
 }
 
-function loadTasks(){
+function hasSavedData(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return false;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.length > 0;
+  }catch(_){ return false; }
+}
+function loadSavedTasks(){
   try{
     const raw = localStorage.getItem(STORAGE_KEY);
     if(raw){
       const parsed = JSON.parse(raw);
-      if(Array.isArray(parsed) && parsed.length) return parsed;
+      if(Array.isArray(parsed)) return parsed;
     }
   }catch(_){}
-  const defaults = createDefaultTasks();
-  saveTasksImmediate(defaults);
-  return defaults;
+  return [];
 }
 function saveTasksImmediate(list){
   try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); }catch(_){}
@@ -204,7 +228,7 @@ function saveCollapse(){
    ============================================================ */
 function switchScreen(name){
   currentScreen = name;
-  ["home","detail","calendar","settings"].forEach(s=>{
+  ["home","detail","calendar"].forEach(s=>{
     document.getElementById(`screen-${s}`).classList.toggle("hidden", s!==name);
   });
   document.querySelectorAll(".bottom-nav .nav-btn").forEach(btn=>{
@@ -240,6 +264,7 @@ function renderHome(){
     block.className = `category-block ${cat.cls}${collapsed?" collapsed":""}`;
     block.innerHTML = `
       <button class="category-header" type="button" data-cat="${cat.id}">
+        <span class="category-icon">${cat.icon}</span>
         <span class="category-title">${escapeHTML(cat.title)}</span>
         <span class="category-count">${catDone}/${catTasks.length}</span>
         <svg class="category-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -529,25 +554,13 @@ function listCardHTML(t, hasDate){
   const badge = done ? "完了" : (hasDate ? daysUntilLabel(t.date) : "");
   return `
     <div class="list-task-card" data-task-id="${t.id}">
+      <span class="list-task-icon" style="background:${cat?cat.dot+'22':'#eee'}">${cat?cat.icon:""}</span>
       <div class="list-task-main">
         <div class="list-task-name${done?" done":""}">${escapeHTML(t.name)}</div>
         <div class="list-task-date">${hasDate?formatShortDate(t.date):"日付未定"}</div>
       </div>
       <span class="list-task-badge">${badge}</span>
     </div>`;
-}
-
-/* ============================================================
-   設定
-   ============================================================ */
-function resetTasks(){
-  if(!confirm("すべてのタスクを削除して初期状態に戻します。よろしいですか？")) return;
-  tasks = createDefaultTasks();
-  saveTasks();
-  collapseState = {};
-  saveCollapse();
-  renderHome();
-  switchScreen("home");
 }
 
 /* ============================================================
@@ -612,6 +625,10 @@ function bindEvents(){
     if(pendingCalendarData) window.open(buildGoogleCalendarURL(pendingCalendarData), "_blank");
     closeCalendarAddSheet();
   });
+  document.getElementById("addOutlookBtn").addEventListener("click", ()=>{
+    if(pendingCalendarData) window.open(buildOutlookCalendarURL(pendingCalendarData), "_blank");
+    closeCalendarAddSheet();
+  });
   document.getElementById("calendarAddCancelBtn").addEventListener("click", closeCalendarAddSheet);
 
   // カレンダー：モード切替
@@ -651,16 +668,49 @@ function bindEvents(){
     const card = e.target.closest("[data-task-id]");
     if(card) openDetail(card.dataset.taskId);
   });
+}
 
-  // 設定
-  document.getElementById("resetBtn").addEventListener("click", resetTasks);
+/* ============================================================
+   トップ画面（新規作成 / 続きから）
+   ============================================================ */
+function enterMain(){
+  document.getElementById("screen-top").classList.add("hidden");
+  document.querySelector(".bottom-nav").classList.remove("hidden");
+  renderHome();
+  switchScreen("home");
+}
+
+function setupTopScreen(hadDraft){
+  const startBtn = document.getElementById("startBtn");
+  const resumeBtn = document.getElementById("resumeBtn");
+
+  if(hadDraft){
+    resumeBtn.classList.remove("hidden");
+    startBtn.textContent = "新しく作成する";
+  }
+
+  startBtn.addEventListener("click", ()=>{
+    if(hadDraft && !confirm("これまでのタスクを削除して、新しく作成しますか？")) return;
+    tasks = createDefaultTasks();
+    collapseState = {};
+    saveTasks();
+    saveCollapse();
+    enterMain();
+  });
+
+  resumeBtn.addEventListener("click", ()=>{
+    tasks = loadSavedTasks();
+    if(!tasks.length) tasks = createDefaultTasks();
+    enterMain();
+  });
 }
 
 /* ============================================================
    初期化
    ============================================================ */
 (function init(){
-  tasks = loadTasks();
+  const hadDraft = hasSavedData();
+  tasks = [];
   collapseState = loadCollapse();
   const now = new Date();
   calYear = now.getFullYear();
@@ -668,6 +718,5 @@ function bindEvents(){
   calSelectedDate = todayStr();
 
   bindEvents();
-  renderHome();
-  switchScreen("home");
+  setupTopScreen(hadDraft);
 })();

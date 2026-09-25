@@ -76,6 +76,24 @@ textarea{ min-height:80px; resize:vertical; line-height:1.6; }
 .screen{ padding:0 14px; min-height:60vh; }
 
 /* ============================================================
+   トップ画面（新規作成 / 続きから）
+   ============================================================ */
+.screen-top{ min-height:88vh; display:flex; align-items:center; padding:0 14px; }
+.top-card{
+  width:100%; background:var(--white); border-radius:var(--radius-lg);
+  box-shadow:var(--shadow-card); padding:36px 26px 32px; text-align:center;
+}
+.top-deco svg{ width:160px; height:26px; }
+.top-eyebrow{ margin:14px 0 6px; font-size:13px; font-weight:700; letter-spacing:.12em; color:var(--pink-deep); }
+.top-title{ margin:0 0 16px; font-size:24px; font-weight:800; line-height:1.4; color:#3a3a3a; }
+.top-desc{ margin:0 0 26px; font-size:13.5px; line-height:1.9; color:#666; text-align:left; }
+.btn-ghost{
+  display:block; width:100%; margin-top:12px; padding:14px;
+  border:2px solid var(--pink-border); border-radius:var(--radius-pill);
+  background:#fff; color:var(--pink-deep); font-size:15px; font-weight:700; cursor:pointer;
+}
+
+/* ============================================================
    進捗カード
    ============================================================ */
 .progress-card{
@@ -188,6 +206,11 @@ textarea{ min-height:80px; resize:vertical; line-height:1.6; }
   display:block; width:100%; margin-top:12px; padding:12px; border:none; border-radius:var(--radius-pill);
   background:var(--pink-soft); color:var(--pink-deep); font-size:14px; font-weight:700; cursor:pointer;
 }
+.sheet-note{
+  margin-top:4px; padding:12px 12px; border-radius:var(--radius-md); background:var(--pink-soft);
+}
+.sheet-note-title{ margin:0 0 4px; font-size:12px; font-weight:800; color:var(--pink-deep); }
+.sheet-note-desc{ margin:0; font-size:11.5px; line-height:1.7; color:#666; }
 
 /* ============================================================
    完了モーダル
@@ -280,16 +303,6 @@ textarea{ min-height:80px; resize:vertical; line-height:1.6; }
 .list-task-date{ font-size:12px; color:var(--ink-soft); }
 .list-task-badge{ flex:0 0 auto; font-size:11.5px; font-weight:800; color:var(--pink-deep); }
 .list-empty{ text-align:center; color:var(--ink-soft); font-size:13px; padding:30px 10px; }
-
-/* ============================================================
-   設定
-   ============================================================ */
-.settings-panel{
-  background:var(--white); border-radius:var(--radius-lg); box-shadow:var(--shadow-card);
-  padding:18px 18px; margin:0 0 14px;
-}
-.settings-row-label{ margin:0 0 8px; font-size:14px; font-weight:800; color:#3a3a3a; }
-.settings-row-desc{ margin:0; font-size:12.5px; line-height:1.8; color:var(--ink-soft); }
 
 /* ============================================================
    ボトムナビ
