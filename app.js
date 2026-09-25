@@ -9,11 +9,11 @@ const STORAGE_KEY = "wedding_schedule_tasks_v1";
 const COLLAPSE_KEY = "wedding_schedule_collapse_v1";
 
 const CATEGORIES = [
-  { id:"engage",  title:"婚約までのスケジュール",   icon:"💍", cls:"cat-engage",
+  { id:"engage",  title:"婚約までのスケジュール",    cls:"cat-engage",
     dot:"var(--cat-engage-deep)" },
-  { id:"nyuseki", title:"入籍前後のスケジュール",   icon:"🏠", cls:"cat-nyuseki",
+  { id:"nyuseki", title:"入籍前後のスケジュール",    cls:"cat-nyuseki",
     dot:"var(--cat-nyuseki-deep)" },
-  { id:"future",  title:"将来のスケジュール",       icon:"🌱", cls:"cat-future",
+  { id:"future",  title:"将来のスケジュール",        cls:"cat-future",
     dot:"var(--cat-future-deep)" },
 ];
 const CATEGORY_MAP = Object.fromEntries(CATEGORIES.map(c=>[c.id,c]));
@@ -264,7 +264,6 @@ function renderHome(){
     block.className = `category-block ${cat.cls}${collapsed?" collapsed":""}`;
     block.innerHTML = `
       <button class="category-header" type="button" data-cat="${cat.id}">
-        <span class="category-icon">${cat.icon}</span>
         <span class="category-title">${escapeHTML(cat.title)}</span>
         <span class="category-count">${catDone}/${catTasks.length}</span>
         <svg class="category-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -554,7 +553,6 @@ function listCardHTML(t, hasDate){
   const badge = done ? "完了" : (hasDate ? daysUntilLabel(t.date) : "");
   return `
     <div class="list-task-card" data-task-id="${t.id}">
-      <span class="list-task-icon" style="background:${cat?cat.dot+'22':'#eee'}">${cat?cat.icon:""}</span>
       <div class="list-task-main">
         <div class="list-task-name${done?" done":""}">${escapeHTML(t.name)}</div>
         <div class="list-task-date">${hasDate?formatShortDate(t.date):"日付未定"}</div>
