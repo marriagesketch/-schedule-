@@ -240,7 +240,6 @@ function renderHome(){
     block.className = `category-block ${cat.cls}${collapsed?" collapsed":""}`;
     block.innerHTML = `
       <button class="category-header" type="button" data-cat="${cat.id}">
-        <span class="category-icon">${cat.icon}</span>
         <span class="category-title">${escapeHTML(cat.title)}</span>
         <span class="category-count">${catDone}/${catTasks.length}</span>
         <svg class="category-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
