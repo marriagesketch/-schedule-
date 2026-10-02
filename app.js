@@ -10,7 +10,7 @@
      更新ボタンを押したときに取り込む。
    ============================================================ */
 
-const LIFF_ID      = "XXXXXXXXXX-XXXXXXXX";   // ← このアプリのLIFF IDに差し替え
+const LIFF_ID      = "2010312230-zfm9lIab";   
 const GAS_ENDPOINT = "https://script.google.com/macros/s/XXXXXXXXXXXXXXXX/exec"; // ← schedule_code.gs のデプロイURL
 const PARTNER_REGISTER_URL = "https://liff.line.me/2010312230-xUsYz0UB";
 const POLL_INTERVAL_MS = 30000;
