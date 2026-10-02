@@ -1,12 +1,21 @@
 /* ============================================================
-   結婚準備タスク管理 – app.js（UIプロトタイプ版）
+   結婚準備タスク管理 – app.js（GAS保存＋自動ペア共有版）
    ------------------------------------------------------------
-   ・データはこの端末の localStorage にのみ保存されます。
-   ・LIFFログイン／サーバー保存／共有機能は未実装です。
+   ・LIFFログイン → LINE userId を SHA-256 した ownerHash だけをGASへ送る。
+   ・GAS が Partners中央API で「現在の真剣交際パートナー」と
+     ペア専用の pairKey を取得し、同じペアの2人は同じデータ領域を共有する。
+   ・タスクは1件ずつ pairKey 由来のAES-GCM鍵で暗号化して保存。
+     「入力完了」の概念は無く、保存した時点で相手にも反映される。
+   ・相手の変更は、画面を開いている間 30秒ごと／アプリに戻ったとき／
+     更新ボタンを押したときに取り込む。
    ============================================================ */
 
-const STORAGE_KEY = "wedding_schedule_tasks_v1";
-const COLLAPSE_KEY = "wedding_schedule_collapse_v1";
+const LIFF_ID      = "XXXXXXXXXX-XXXXXXXX";   // ← このアプリのLIFF IDに差し替え
+const GAS_ENDPOINT = "https://script.google.com/macros/s/XXXXXXXXXXXXXXXX/exec"; // ← schedule_code.gs のデプロイURL
+const PARTNER_REGISTER_URL = "https://liff.line.me/2010312230-xUsYz0UB";
+const POLL_INTERVAL_MS = 30000;
+
+const COLLAPSE_KEY = "wedding_schedule_collapse_v1"; // 表示設定のみ端末に保存
 
 const CATEGORIES = [
   { id:"engage",  title:"婚約までのスケジュール",    cls:"cat-engage",
@@ -38,6 +47,12 @@ let calSelectedDate = null;
 let calMode = "month";
 let listFilter = "all";
 let pendingCalendarData = null;
+const AppState = { ownerHash:null, partnerHash:null, pairKey:null, aesKey:null };
+let localVersion = 0;      // ローカル変更のたびに加算（古い同期結果の上書き防止）
+let pendingOps = 0;        // 送信中の保存件数
+let opQueue = Promise.resolve();
+let pulling = false;
+let pollTimer = null;
 
 /* ============================================================
    ユーティリティ
@@ -166,14 +181,14 @@ function buildOutlookCalendarURL({ name, dateStr, memo }){
 }
 
 /* ============================================================
-   永続化
+   初期タスク（IDを固定にして、2人が同時に初回起動しても重複しない）
    ============================================================ */
 function createDefaultTasks(){
   const list = [];
   CATEGORIES.forEach(cat=>{
     DEFAULT_TASK_NAMES[cat.id].forEach((name, idx)=>{
       list.push({
-        id: generateId(),
+        id: `def-${cat.id}-${idx}`,
         category: cat.id,
         name,
         status: "notStarted",
@@ -189,29 +204,6 @@ function createDefaultTasks(){
   return list;
 }
 
-function hasSavedData(){
-  try{
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if(!raw) return false;
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length > 0;
-  }catch(_){ return false; }
-}
-function loadSavedTasks(){
-  try{
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if(raw){
-      const parsed = JSON.parse(raw);
-      if(Array.isArray(parsed)) return parsed;
-    }
-  }catch(_){}
-  return [];
-}
-function saveTasksImmediate(list){
-  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); }catch(_){}
-}
-function saveTasks(){ saveTasksImmediate(tasks); }
-
 function loadCollapse(){
   try{
     const raw = localStorage.getItem(COLLAPSE_KEY);
@@ -221,6 +213,193 @@ function loadCollapse(){
 }
 function saveCollapse(){
   try{ localStorage.setItem(COLLAPSE_KEY, JSON.stringify(collapseState)); }catch(_){}
+}
+
+/* ============================================================
+   暗号化（propose_app.js と同方式。用途ごとに鍵を分離）
+   ============================================================ */
+function bufToBase64Url(buf){
+  const bytes = new Uint8Array(buf);
+  let binary = "";
+  for(let i=0;i<bytes.length;i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary).replace(/\+/g,"-").replace(/\//g,"_").replace(/=/g,"");
+}
+function base64UrlToBuf(str){
+  const padded = str.replace(/-/g,"+").replace(/_/g,"/");
+  const pad = padded.length % 4;
+  const binary = atob(pad ? padded + "=".repeat(4-pad) : padded);
+  const bytes = new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++) bytes[i] = binary.charCodeAt(i);
+  return bytes.buffer;
+}
+async function sha256Hex(str){
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
+}
+async function deriveAesKey(pairKey){
+  const material = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("schedule:cipher:" + pairKey));
+  return crypto.subtle.importKey("raw", material, { name:"AES-GCM" }, false, ["encrypt","decrypt"]);
+}
+async function encryptJSON(obj, key){
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const enc = new TextEncoder().encode(JSON.stringify(obj));
+  const cipherBuf = await crypto.subtle.encrypt({ name:"AES-GCM", iv }, key, enc);
+  const combined = new Uint8Array(iv.length + cipherBuf.byteLength);
+  combined.set(iv, 0);
+  combined.set(new Uint8Array(cipherBuf), iv.length);
+  return bufToBase64Url(combined.buffer);
+}
+async function decryptJSON(base64, key){
+  const combined = new Uint8Array(base64UrlToBuf(base64));
+  const plainBuf = await crypto.subtle.decrypt(
+    { name:"AES-GCM", iv: combined.slice(0,12) }, key, combined.slice(12));
+  return JSON.parse(new TextDecoder().decode(plainBuf));
+}
+
+/* ============================================================
+   担当（自分／パートナー）は人によって意味が逆になるため、
+   保存時は ownerHash で絶対指定し、読み込み時に「自分視点」へ戻す
+   ============================================================ */
+function assigneeToStored(a){
+  if(a === "self") return AppState.ownerHash;
+  if(a === "partner") return AppState.partnerHash;
+  return "both";
+}
+function assigneeFromStored(a){
+  if(a === AppState.ownerHash) return "self";
+  if(a === AppState.partnerHash) return "partner";
+  return "both";
+}
+function toPayload(t){
+  return {
+    category: t.category, name: t.name, status: t.status, date: t.date,
+    assignee: assigneeToStored(t.assignee), memo: t.memo,
+    reminderDays: t.reminderDays, completedDate: t.completedDate, order: t.order,
+  };
+}
+
+/* ============================================================
+   GAS通信
+   ============================================================ */
+async function apiFetchTasks(){
+  const url = `${GAS_ENDPOINT}?action=fetchTasks&ownerHash=${encodeURIComponent(AppState.ownerHash)}`;
+  const resp = await fetch(url, { method:"GET" });
+  return resp.json();
+}
+async function apiSave(items, insertOnly){
+  const resp = await fetch(GAS_ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type":"text/plain;charset=utf-8" },
+    body: JSON.stringify({ action:"save", ownerHash:AppState.ownerHash, insertOnly:!!insertOnly, items }),
+  });
+  const result = await resp.json();
+  if(!result.ok){
+    const err = new Error(result.reason || "save_failed");
+    err.reason = result.reason;
+    throw err;
+  }
+  return result;
+}
+
+async function decodeServerTasks(rows){
+  const list = [];
+  for(const row of rows){
+    if(row.deleted) continue;
+    try{
+      const p = await decryptJSON(row.cipherText, AppState.aesKey);
+      list.push(Object.assign({}, p, { id: row.id, assignee: assigneeFromStored(p.assignee) }));
+    }catch(e){
+      console.error("decrypt task failed", row.id, e);
+    }
+  }
+  return list;
+}
+
+/* ---- 同期状態の表示 ---- */
+function setSyncStatus(state){
+  const el = document.getElementById("syncStatus");
+  if(!el) return;
+  el.textContent = ({ saving:"保存中…", ok:"同期済み", error:"同期エラー", loading:"更新中…" })[state] || "";
+  el.dataset.state = state || "";
+}
+
+/* ---- 保存（1件ずつ暗号化して送信。順序を保つためキューで直列化） ---- */
+function persistTasks(list){
+  localVersion++;
+  pendingOps++;
+  setSyncStatus("saving");
+  const p = opQueue.then(async ()=>{
+    const items = await Promise.all(list.map(async t=>
+      t.deleted ? { id:t.id, deleted:true }
+                : { id:t.id, cipherText: await encryptJSON(toPayload(t), AppState.aesKey) }
+    ));
+    await apiSave(items, false);
+  });
+  opQueue = p.catch(()=>{});
+  p.then(()=>{
+    pendingOps--;
+    if(pendingOps === 0) setSyncStatus("ok");
+  }).catch(async (e)=>{
+    pendingOps--;
+    console.error("save failed", e);
+    setSyncStatus("error");
+    if(e.reason === "partner_ended" || e.reason === "no_partner"){
+      showBlocked(e.reason);
+      return;
+    }
+    alert("保存に失敗しました。通信環境を確認してください。サーバー上の内容に戻します。");
+    await pullFromServer(true);
+  });
+}
+
+/* ---- 取得（相手の変更の取り込み） ---- */
+async function pullFromServer(force){
+  if(pulling) return;
+  if(!force && (pendingOps > 0 || currentScreen === "detail")) return; // 編集中は上書きしない
+  pulling = true;
+  const versionAtStart = localVersion;
+  if(force) setSyncStatus("loading");
+  try{
+    const r = await apiFetchTasks();
+    if(!r.ok){ showBlocked(r.reason); return; }
+    if(!force && versionAtStart !== localVersion) return; // 取得中に自分が編集した → 破棄
+    AppState.partnerHash = r.partnerHash;
+    tasks = await decodeServerTasks(r.tasks);
+    renderHome();
+    if(currentScreen === "calendar") renderCalendar();
+    setSyncStatus("ok");
+  }catch(e){
+    console.error("pull failed", e);
+    setSyncStatus("error");
+  }finally{
+    pulling = false;
+  }
+}
+
+function startPolling(){
+  if(pollTimer) return;
+  pollTimer = setInterval(()=>{ if(!document.hidden) pullFromServer(false); }, POLL_INTERVAL_MS);
+  document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) pullFromServer(false); });
+}
+
+/* ---- 初回読み込み（タスクが1件も無ければ初期タスクを投入） ---- */
+async function initialLoad(){
+  let r = await apiFetchTasks();
+  if(!r.ok) return r;
+  AppState.pairKey = r.pairKey;
+  AppState.partnerHash = r.partnerHash;
+  AppState.aesKey = await deriveAesKey(r.pairKey);
+
+  if(r.tasks.length === 0){
+    const defaults = createDefaultTasks();
+    const items = await Promise.all(defaults.map(async t=>
+      ({ id:t.id, cipherText: await encryptJSON(toPayload(t), AppState.aesKey) })));
+    await apiSave(items, true);       // 相手が先に作っていたら上書きしない
+    r = await apiFetchTasks();        // 結果を取り直して揃える
+    if(!r.ok) return r;
+  }
+  tasks = await decodeServerTasks(r.tasks);
+  return r;
 }
 
 /* ============================================================
@@ -303,7 +482,7 @@ function toggleTaskQuick(id){
     t.status = "done";
     t.completedDate = todayStr();
   }
-  saveTasks();
+  persistTasks([t]);
   renderHome();
   if(currentScreen==="calendar") renderCalendar();
 }
@@ -387,7 +566,7 @@ function saveDetail(){
     if(!nowDone) t.completedDate = null;
     savedTask = t;
   }
-  saveTasks();
+  persistTasks([savedTask]);
   renderHome();
 
   if(nowDone && !wasDone){
@@ -400,8 +579,9 @@ function saveDetail(){
 function deleteDetail(){
   if(editingIsNew) { closeDetail(); return; }
   if(!confirm("このタスクを削除しますか？")) return;
-  tasks = tasks.filter(t=>t.id!==editingTaskId);
-  saveTasks();
+  const delId = editingTaskId;
+  tasks = tasks.filter(t=>t.id!==delId);
+  persistTasks([{ id:delId, deleted:true }]);
   renderHome();
   closeDetail();
 }
@@ -597,6 +777,9 @@ function bindEvents(){
     }
   });
 
+  // 更新ボタン
+  document.getElementById("refreshBtn").addEventListener("click", ()=> pullFromServer(true));
+
   // 詳細画面
   document.getElementById("detailBackBtn").addEventListener("click", closeDetail);
   document.getElementById("detailDeleteBtn").addEventListener("click", deleteDetail);
@@ -669,52 +852,79 @@ function bindEvents(){
 }
 
 /* ============================================================
-   トップ画面（新規作成 / 続きから）
+   トップ画面（読み込み状況の表示 → 「はじめる」）
    ============================================================ */
 function enterMain(){
   document.getElementById("screen-top").classList.add("hidden");
   document.querySelector(".bottom-nav").classList.remove("hidden");
   renderHome();
   switchScreen("home");
+  setSyncStatus("ok");
+  startPolling();
 }
 
-function setupTopScreen(hadDraft){
-  const startBtn = document.getElementById("startBtn");
-  const resumeBtn = document.getElementById("resumeBtn");
+function setTopStatus(text, showRegisterCta){
+  document.getElementById("topStatus").textContent = text || "";
+  document.getElementById("partnerCta").classList.toggle("hidden", !showRegisterCta);
+}
 
-  if(hadDraft){
-    resumeBtn.classList.remove("hidden");
-    startBtn.textContent = "新しく作成する";
-  }
+const REASON_TEXT = {
+  partner_ended: "以前のお相手との真剣交際は終了しています。新しいパートナーを登録すると、スケジュールをご利用いただけます。",
+  no_partner:    "スケジュールは、真剣交際のパートナー登録が完了した方のみご利用いただけます。先にパートナー登録を済ませてください。",
+  server_error:  "読み込みに失敗しました。時間をおいてもう一度開き直してください。",
+};
 
-  startBtn.addEventListener("click", ()=>{
-    if(hadDraft && !confirm("これまでのタスクを削除して、新しく作成しますか？")) return;
-    tasks = createDefaultTasks();
-    collapseState = {};
-    saveTasks();
-    saveCollapse();
-    enterMain();
-  });
-
-  resumeBtn.addEventListener("click", ()=>{
-    tasks = loadSavedTasks();
-    if(!tasks.length) tasks = createDefaultTasks();
-    enterMain();
-  });
+/* パートナー解除などで利用できなくなったとき、トップ画面に戻して案内 */
+function showBlocked(reason){
+  if(pollTimer){ clearInterval(pollTimer); pollTimer = null; }
+  tasks = [];
+  ["home","detail","calendar"].forEach(n=>document.getElementById(`screen-${n}`).classList.add("hidden"));
+  document.querySelector(".bottom-nav").classList.add("hidden");
+  document.getElementById("screen-top").classList.remove("hidden");
+  document.getElementById("startBtn").classList.add("hidden");
+  setTopStatus(REASON_TEXT[reason] || REASON_TEXT.server_error,
+               reason === "partner_ended" || reason === "no_partner");
 }
 
 /* ============================================================
    初期化
    ============================================================ */
-(function init(){
-  const hadDraft = hasSavedData();
-  tasks = [];
+(async function init(){
   collapseState = loadCollapse();
   const now = new Date();
   calYear = now.getFullYear();
   calMonth = now.getMonth();
   calSelectedDate = todayStr();
-
   bindEvents();
-  setupTopScreen(hadDraft);
+
+  const startBtn = document.getElementById("startBtn");
+  startBtn.disabled = true;
+  startBtn.textContent = "読み込み中…";
+  startBtn.addEventListener("click", enterMain);
+
+  try{
+    await liff.init({ liffId: LIFF_ID });
+  }catch(e){
+    console.error("LIFF init failed", e);
+    startBtn.classList.add("hidden");
+    setTopStatus("LIFFの初期化に失敗しました。", false);
+    return;
+  }
+  if(!liff.isLoggedIn()){ liff.login(); return; }
+
+  try{
+    const idToken = liff.getDecodedIDToken();
+    if(!idToken || !idToken.sub) throw new Error("ID token is not available");
+    AppState.ownerHash = await sha256Hex(idToken.sub);
+
+    const r = await initialLoad();
+    if(!r.ok){ showBlocked(r.reason); return; }
+  }catch(e){
+    console.error("initial load failed", e);
+    showBlocked("server_error");
+    return;
+  }
+
+  startBtn.disabled = false;
+  startBtn.textContent = "はじめる";
 })();

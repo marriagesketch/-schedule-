@@ -323,3 +323,12 @@ textarea{ min-height:80px; resize:vertical; line-height:1.6; }
 @media(min-width:561px){
   .bottom-nav{ border-radius:0 0 var(--radius-lg) var(--radius-lg); }
 }
+
+/* ---- 同期UI・トップ画面の状態表示（追加分） ---- */
+.app-bar-right{ flex:1; display:flex; justify-content:flex-end; }
+.sync-status{ font-size:11px; color:var(--ink-soft); padding-left:6px; }
+.sync-status[data-state="error"]{ color:#d9534f; font-weight:700; }
+.top-status{ margin:0 0 16px; font-size:13px; line-height:1.8; color:var(--ink-soft); }
+.top-status:empty{ display:none; }
+.btn-link{ text-decoration:none; text-align:center; margin-bottom:12px; }
+.btn-primary:disabled{ opacity:.6; cursor:default; }

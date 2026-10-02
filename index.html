@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#f48ca0"/>
 <title>結婚準備タスク管理</title>
 <link rel="stylesheet" href="style.css"/>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 </head>
 <body>
 
@@ -25,18 +26,23 @@
       <h1 class="top-title">今後のスケジュール管理</h1>
       <p class="top-desc">
         婚約から入籍・結婚式、将来のことまで、二人で決めていくタスクをリストとカレンダーで管理します。<br>
-        タスクの内容は、この端末のブラウザ内にのみ保存されます。パートナーとの共有機能や、他端末との同期はまだ実装されていません。
+        タスクは暗号化して保存され、真剣交際のパートナーと自動で共有されます。どちらかが保存したタスクは、もう一方の画面にも反映されます。
       </p>
+      <p id="topStatus" class="top-status"></p>
+      <a id="partnerCta" class="btn-primary btn-link hidden" href="https://liff.line.me/2010312230-xUsYz0UB">パートナー登録はこちら</a>
       <button id="startBtn" class="btn-primary" type="button">はじめる</button>
-      <button id="resumeBtn" class="btn-ghost hidden" type="button">続きから作成する</button>
     </div>
   </section>
 
   <!-- ============ ホーム / タスク一覧 ============ -->
   <section id="screen-home" class="screen hidden">
     <header class="app-bar">
-      <div class="app-bar-left">
-        <span class="app-bar-title">今後のスケジュール</span>
+      <div class="app-bar-left"><span id="syncStatus" class="sync-status"></span></div>
+      <span class="app-bar-title">今後のスケジュール</span>
+      <div class="app-bar-right">
+        <button class="icon-btn" id="refreshBtn" type="button" aria-label="最新の状態に更新">
+          <svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.5-5.8M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
       </div>
     </header>
 
