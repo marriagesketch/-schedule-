@@ -47,7 +47,7 @@ let calSelectedDate = null;
 let calMode = "month";
 let listFilter = "all";
 let pendingCalendarData = null;
-const AppState = { ownerHash:null, partnerHash:null, pairKey:null, aesKey:null };
+const AppState = { ownerHash:null, partnerHash:null, pairKey:null, aesKey:null, selfName:"", partnerName:"" };
 let localVersion = 0;      // ローカル変更のたびに加算（古い同期結果の上書き防止）
 let pendingOps = 0;        // 送信中の保存件数
 let opQueue = Promise.resolve();
@@ -270,6 +270,27 @@ function assigneeFromStored(a){
   if(a === AppState.partnerHash) return "partner";
   return "both";
 }
+/* ---- 担当の表示名（パートナー登録時に入力した2人の名前） ---- */
+function assigneeLabels(){
+  let self = (AppState.selfName || "").trim() || "自分";
+  let partner = (AppState.partnerName || "").trim() || "パートナー";
+  if(self === partner){ self += "（自分）"; partner += "（パートナー）"; } // 同名のとき見分けられるように
+  return { self, partner, both:"二人" };
+}
+function applyAssigneeLabels(){
+  const labels = assigneeLabels();
+  document.querySelectorAll("#assigneePills .pill").forEach(btn=>{
+    const l = labels[btn.dataset.assignee];
+    if(l) btn.textContent = l;
+  });
+}
+function setNamesFromServer(r){
+  AppState.partnerHash = r.partnerHash;
+  AppState.selfName = r.selfName || "";
+  AppState.partnerName = r.partnerName || "";
+  applyAssigneeLabels();
+}
+
 function toPayload(t){
   return {
     category: t.category, name: t.name, status: t.status, date: t.date,
@@ -363,7 +384,7 @@ async function pullFromServer(force){
     const r = await apiFetchTasks();
     if(!r.ok){ showBlocked(r.reason); return; }
     if(!force && versionAtStart !== localVersion) return; // 取得中に自分が編集した → 破棄
-    AppState.partnerHash = r.partnerHash;
+    setNamesFromServer(r);
     tasks = await decodeServerTasks(r.tasks);
     renderHome();
     if(currentScreen === "calendar") renderCalendar();
@@ -387,7 +408,7 @@ async function initialLoad(){
   let r = await apiFetchTasks();
   if(!r.ok) return r;
   AppState.pairKey = r.pairKey;
-  AppState.partnerHash = r.partnerHash;
+  setNamesFromServer(r);
   AppState.aesKey = await deriveAesKey(r.pairKey);
 
   if(r.tasks.length === 0){
@@ -593,7 +614,7 @@ function showCompleteModal(task){
     <div>タスク：<span>${escapeHTML(task.name)}</span></div>
     <div>カテゴリ：<span>${cat ? escapeHTML(cat.title.replace("のスケジュール","")) : ""}</span></div>
     <div>完了日：<span>${task.completedDate ? formatShortDate(task.completedDate) : ""}</span></div>
-    <div>担当：<span>${ {self:"自分",partner:"パートナー",both:"二人"}[task.assignee] || "" }</span></div>
+    <div>担当：<span>${ escapeHTML(assigneeLabels()[task.assignee] || "") }</span></div>
   `;
   document.getElementById("completeModal").classList.remove("hidden");
 }

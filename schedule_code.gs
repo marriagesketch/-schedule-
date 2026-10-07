@@ -54,7 +54,7 @@ function resolvePartner(ownerHash) {
   var cached = cache.get(cacheKey);
   if (cached) return JSON.parse(cached);
 
-  var result = { ok: false, active: false, everPartnered: false, partnerHash: '', pairKey: '' };
+  var result = { ok: false, active: false, everPartnered: false, partnerHash: '', pairKey: '', selfDisplayName: '', partnerDisplayName: '' };
   try {
     var url = PARTNERS_ENDPOINT + '?action=status'
       + '&ownerHash=' + encodeURIComponent(ownerHash)
@@ -67,7 +67,9 @@ function resolvePartner(ownerHash) {
         active: !!body.active,
         everPartnered: !!body.everPartnered,
         partnerHash: body.partnerHash || '',
-        pairKey: body.pairKey || ''
+        pairKey: body.pairKey || '',
+        selfDisplayName: body.selfDisplayName || '',       // 自分がパートナー登録時に入力した名前
+        partnerDisplayName: body.partnerDisplayName || ''  // 相手がパートナー登録時に入力した名前
       };
     }
   } catch (err) {
@@ -171,6 +173,8 @@ function handleFetchTasks(ownerHash) {
     ok: true,
     pairKey: resolved.pairKey,
     partnerHash: resolved.partnerHash,
+    selfName: resolved.selfDisplayName,
+    partnerName: resolved.partnerDisplayName,
     tasks: tasks
   });
 }
