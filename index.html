@@ -29,7 +29,19 @@
         タスクは暗号化して保存され、真剣交際のパートナーと自動で共有されます。どちらかが保存したタスクは、もう一方の画面にも反映されます。
       </p>
       <p id="topStatus" class="top-status"></p>
-      <a id="partnerCta" class="btn-primary btn-link hidden" href="https://liff.line.me/2010312230-xUsYz0UB">パートナー登録はこちら</a>
+      <!-- パートナー未登録／解除時に表示（app.jsが表示制御） -->
+      <div id="partnerRequired" class="cta-card hidden">
+        <div class="cta-content">
+          <h3 class="cta-title">パートナー登録が必要です</h3>
+          <p class="cta-text">
+            スケジュールは、真剣交際のパートナー登録が完了した方のみご利用いただけます。<br>
+            先にパートナー登録を済ませてください。
+          </p>
+          <a href="https://liff.line.me/2010312230-xUsYz0UB" class="cta-button">
+            パートナー登録はこちら <span class="cta-arrow">›</span>
+          </a>
+        </div>
+      </div>
       <button id="startBtn" class="btn-primary" type="button">はじめる</button>
     </div>
   </section>

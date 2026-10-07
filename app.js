@@ -863,16 +863,28 @@ function enterMain(){
   startPolling();
 }
 
-function setTopStatus(text, showRegisterCta){
+function setTopStatus(text){
   document.getElementById("topStatus").textContent = text || "";
-  document.getElementById("partnerCta").classList.toggle("hidden", !showRegisterCta);
 }
 
 const REASON_TEXT = {
-  partner_ended: "以前のお相手との真剣交際は終了しています。新しいパートナーを登録すると、スケジュールをご利用いただけます。",
-  no_partner:    "スケジュールは、真剣交際のパートナー登録が完了した方のみご利用いただけます。先にパートナー登録を済ませてください。",
-  server_error:  "読み込みに失敗しました。時間をおいてもう一度開き直してください。",
+  partner_ended: { title:"パートナーが解除されています",
+    text:"以前のお相手との真剣交際は終了しています。\n新しいパートナーを登録すると、スケジュールをご利用いただけます。" },
+  no_partner:    { title:"パートナー登録が必要です",
+    text:"スケジュールは、真剣交際のパートナー登録が完了した方のみご利用いただけます。\n先にパートナー登録を済ませてください。" },
 };
+const ERROR_TEXT = "読み込みに失敗しました。時間をおいてもう一度開き直してください。";
+
+/* パートナー登録案内カード（プロポーズプランと同じCTA） */
+function showPartnerRequired(reason){
+  const card = document.getElementById("partnerRequired");
+  const info = REASON_TEXT[reason];
+  if(!info){ card.classList.add("hidden"); return false; }
+  card.querySelector(".cta-title").textContent = info.title;
+  card.querySelector(".cta-text").innerHTML = escapeHTML(info.text).replace(/\n/g, "<br>");
+  card.classList.remove("hidden");
+  return true;
+}
 
 /* パートナー解除などで利用できなくなったとき、トップ画面に戻して案内 */
 function showBlocked(reason){
@@ -882,8 +894,8 @@ function showBlocked(reason){
   document.querySelector(".bottom-nav").classList.add("hidden");
   document.getElementById("screen-top").classList.remove("hidden");
   document.getElementById("startBtn").classList.add("hidden");
-  setTopStatus(REASON_TEXT[reason] || REASON_TEXT.server_error,
-               reason === "partner_ended" || reason === "no_partner");
+  const isPartnerIssue = showPartnerRequired(reason);
+  setTopStatus(isPartnerIssue ? "" : ERROR_TEXT);
 }
 
 /* ============================================================
@@ -907,7 +919,7 @@ function showBlocked(reason){
   }catch(e){
     console.error("LIFF init failed", e);
     startBtn.classList.add("hidden");
-    setTopStatus("LIFFの初期化に失敗しました。", false);
+    setTopStatus("LIFFの初期化に失敗しました。");
     return;
   }
   if(!liff.isLoggedIn()){ liff.login(); return; }

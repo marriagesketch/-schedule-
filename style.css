@@ -330,5 +330,24 @@ textarea{ min-height:80px; resize:vertical; line-height:1.6; }
 .sync-status[data-state="error"]{ color:#d9534f; font-weight:700; }
 .top-status{ margin:0 0 16px; font-size:13px; line-height:1.8; color:var(--ink-soft); }
 .top-status:empty{ display:none; }
-.btn-link{ text-decoration:none; text-align:center; margin-bottom:12px; }
 .btn-primary:disabled{ opacity:.6; cursor:default; }
+
+/* ---- パートナー登録CTA（プロポーズプランと同デザイン） ---- */
+.cta-card{
+  margin:0 0 16px; padding:24px;
+  background:linear-gradient(135deg,#fff9fa 0%,#ffeef1 100%);
+  border:2px dashed #f4b8c5; border-radius:24px; text-align:center;
+}
+.cta-title{ margin:0 0 12px; font-size:18px; font-weight:700; color:var(--pink-deep); }
+.cta-text{ margin:0 0 20px; font-size:13px; line-height:1.8; color:#555; text-align:left; }
+.cta-button{
+  display:flex; align-items:center; justify-content:center; gap:8px;
+  width:100%; padding:14px; border-radius:50px; background:var(--pink-primary);
+  color:#fff; font-size:15px; font-weight:700; text-decoration:none;
+  box-shadow:0 4px 12px rgba(244,140,160,.35);
+}
+.cta-arrow{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:22px; height:22px; border-radius:50%; background:rgba(255,255,255,.3);
+  font-size:14px; line-height:1;
+}
