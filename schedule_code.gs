@@ -27,7 +27,7 @@
       で発行された /exec URL を app.js の GAS_ENDPOINT に設定する。
    ============================================================ */
 
-var SPREADSHEET_ID = 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'; // ← スケジュール用スプレッドシートIDに差し替え
+var SPREADSHEET_ID = '1jl2X1lhz2E3_Hfwk_uRx87Ue0EP7JZvRvdNRTh2mfmg'; // ← スケジュール用スプレッドシートIDに差し替え
 var SHEET_NAME     = 'Tasks';
 var DATA_START_ROW = 2;
 
