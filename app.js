@@ -11,7 +11,7 @@
    ============================================================ */
 
 const LIFF_ID      = "2010312230-zfm9lIab";   
-const GAS_ENDPOINT = "https://script.google.com/macros/s/XXXXXXXXXXXXXXXX/exec"; // ← schedule_code.gs のデプロイURL
+const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycbzWiMKCNu0YU9Aic0jQ7Wtg4adI7UoFDjTMuZseglCxgp7QYvc5poSCXx9e6GAWMxwQJw/exec"; 
 const PARTNER_REGISTER_URL = "https://liff.line.me/2010312230-xUsYz0UB";
 const POLL_INTERVAL_MS = 30000;
 
