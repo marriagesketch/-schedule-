@@ -47,7 +47,7 @@ let calSelectedDate = null;
 let calMode = "month";
 let listFilter = "all";
 let pendingCalendarData = null;
-const AppState = { ownerHash:null, partnerHash:null, pairKey:null, aesKey:null, selfName:"", partnerName:"" };
+const AppState = { ownerHash:null, partnerHash:null, pairKey:null, aesKey:null, selfName:"", partnerName:"", rev:null };
 let localVersion = 0;      // ローカル変更のたびに加算（古い同期結果の上書き防止）
 let pendingOps = 0;        // 送信中の保存件数
 let opQueue = Promise.resolve();
@@ -302,8 +302,15 @@ function toPayload(t){
 /* ============================================================
    GAS通信
    ============================================================ */
-async function apiFetchTasks(){
-  const url = `${GAS_ENDPOINT}?action=fetchTasks&ownerHash=${encodeURIComponent(AppState.ownerHash)}`;
+/* GASの起動待ち（コールドスタート）を、本番の通信より前に済ませておくための軽い呼び出し */
+function warmUpGas(){
+  try{ fetch(`${GAS_ENDPOINT}?action=ping`, { method:"GET" }).catch(()=>{}); }catch(_){}
+}
+
+/* since: 前回受け取った rev。サーバー側に変更が無ければ { unchanged:true } だけが返る（軽い） */
+async function apiFetchTasks(since){
+  let url = `${GAS_ENDPOINT}?action=fetchTasks&ownerHash=${encodeURIComponent(AppState.ownerHash)}`;
+  if(since) url += `&since=${encodeURIComponent(since)}`;
   const resp = await fetch(url, { method:"GET" });
   return resp.json();
 }
@@ -318,6 +325,11 @@ async function apiSave(items, insertOnly){
     const err = new Error(result.reason || "save_failed");
     err.reason = result.reason;
     throw err;
+  }
+  // 自分の保存の直前まで最新(rev一致)だった場合は、保存後のrevへ進める。
+  // （お相手の変更が挟まっていた場合は一致しないので進めず、次の同期で取り込む）
+  if(result.rev && result.prevRev && AppState.rev && String(AppState.rev) === String(result.prevRev)){
+    AppState.rev = String(result.rev);
   }
   return result;
 }
@@ -381,9 +393,16 @@ async function pullFromServer(force){
   const versionAtStart = localVersion;
   if(force) setSyncStatus("loading");
   try{
-    const r = await apiFetchTasks();
+    // 強制取得でなければ、前回のrevを送って「変更なし」なら軽く終える
+    const r = await apiFetchTasks(force ? null : AppState.rev);
     if(!r.ok){ showBlocked(r.reason); return; }
     if(!force && versionAtStart !== localVersion) return; // 取得中に自分が編集した → 破棄
+    if(r.unchanged){
+      setNamesFromServer(r);
+      setSyncStatus("ok");
+      return; // 復号も再描画も不要
+    }
+    AppState.rev = r.rev ? String(r.rev) : null;
     setNamesFromServer(r);
     tasks = await decodeServerTasks(r.tasks);
     renderHome();
@@ -407,6 +426,7 @@ function startPolling(){
 async function initialLoad(){
   let r = await apiFetchTasks();
   if(!r.ok) return r;
+  AppState.rev = r.rev ? String(r.rev) : null;
   AppState.pairKey = r.pairKey;
   setNamesFromServer(r);
   AppState.aesKey = await deriveAesKey(r.pairKey);
@@ -418,6 +438,7 @@ async function initialLoad(){
     await apiSave(items, true);       // 相手が先に作っていたら上書きしない
     r = await apiFetchTasks();        // 結果を取り直して揃える
     if(!r.ok) return r;
+    AppState.rev = r.rev ? String(r.rev) : null;
   }
   tasks = await decodeServerTasks(r.tasks);
   return r;
@@ -923,6 +944,7 @@ function showBlocked(reason){
    初期化
    ============================================================ */
 (async function init(){
+  warmUpGas(); // LIFFの初期化と並行して、GASを先に起こしておく
   collapseState = loadCollapse();
   const now = new Date();
   calYear = now.getFullYear();
